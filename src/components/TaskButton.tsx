@@ -9,6 +9,7 @@ export default function TaskButton(props) {
         <View key={props.taskType.id} style={styles.taskButton}>
             <Text>{props.taskType.title}</Text>
             <Button title="Fiz!" onPress={() => props.doThisTask(props.taskType)}/>
+            
         </View>
     )
 }

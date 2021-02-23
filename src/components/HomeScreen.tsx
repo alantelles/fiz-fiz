@@ -1,14 +1,19 @@
 import React, { useEffect, useState } from 'react'
-import { View, Text, Button, Alert } from 'react-native'
+import { View, Text, Button, Alert, ScrollView } from 'react-native'
 import { styles } from '../styles'
-import { tasksTypes } from '../fakedata/tasksTypes'
+// import { tasksTypes } from '../fakedata/tasksTypes'
 import TaskButton from '../components/TaskButton'
-import { openDatabase } from 'react-native-sqlite-storage'
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { TaskTypeService } from '../services/TaskTypeService'
+import { TaskDoneService } from '../services/TaskDoneService'
+import { useIsFocused } from '@react-navigation/native'
+
 
 
 export default function HomeScreen ({ navigation }) {
-    const [tasksTypes, setTasksTypes] = useState([])
+    
     const doThisTask = (task) => {
+        TaskDoneService.insertOne(task)
         console.log(`Fiz: ${task.title}`)
         Alert.alert(
             'Fiz!',
@@ -16,42 +21,48 @@ export default function HomeScreen ({ navigation }) {
         )
     }
     const [msgNoTasks, setMsgNoTasks] = useState('')
+    const [tasksTypes, setTasksTypes] = useState([])
+    const loadTasksTypes = async () => {
+        const value = await AsyncStorage.getItem('@tasksTypes')
+        if (value) {
+            const jsonified = JSON.parse(value)
+            setTasksTypes(jsonified)
+        }
+        
+    }
+    const isFocused = useIsFocused();
+    async function getTasksTypes() {
+        const response = await TaskTypeService.getAll()
+        setTasksTypes(response)
+    }
     useEffect(() => {
         function loadTasks() {
-            var db = openDatabase({name: 'db.sqlite3'})
-            db.transaction(function(txn){
-                txn.executeSql(
-                    'SELECT * FROM tasks',
-                    [],
-                    function(tx, res) {
-                        const temp = [];
-                        res.rows.each(function(e, i) {
-                            temp.push(e)
-                        })
-                        setTasksTypes(temp)
-                    }
-                )
-            }) 
+            getTasksTypes()
             if (tasksTypes.length > 0) {
-                setMsgNoTasks('');
+                setMsgNoTasks('O que você fez?');
             }
             else {
                 setMsgNoTasks('Você não tem tarefas cadastradas')
             }
         }
+        
         loadTasks()
-    }, [])
+    },[isFocused])
+
+    const deleteAll = () => {
+        AsyncStorage.setItem('@tasksTypes', '[]')
+    }
 
         
     
     
     return (
-        <View style={styles.spaced}>
+        <ScrollView style={styles.spaced}>
             <Text style={[styles.center, styles.cta]}>{msgNoTasks}</Text>
             <View>
-                {tasksTypes.map((e, i) => <TaskButton taskType={e} doThisTask={doThisTask} /> )}
+                {tasksTypes.map((e, i) => <TaskButton key={i} taskType={e} doThisTask={doThisTask} /> )}
             </View>
             <Button title="Tarefas" onPress={() => navigation.navigate('Tasks')} />
-        </View>
+        </ScrollView>
     )
 }
